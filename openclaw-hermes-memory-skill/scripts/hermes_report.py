@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import logging
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+
+logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 
 
 def utc_now_iso() -> str:
@@ -83,6 +86,14 @@ def main() -> None:
     report_text = build_report(template, payload)
 
     append_jsonl(memory_log, payload)
+
+    try:
+        from update_index import update_skill_index
+        skill_root = Path(__file__).resolve().parents[1]
+        index_path = skill_root / "references" / "HERMES_SKILL_INDEX.md"
+        update_skill_index(skill_root, index_path)
+    except Exception as e:
+        logging.warning(f"Failed to update skill index: {e}")
 
     print(report_text)
 

@@ -41,13 +41,34 @@ This command prints a fixed Hermes report prompt and appends a JSONL record into
 1. Run `scripts/hermes_report.py` with exact user input and model output.
 2. Send printed template text to Hermes without altering section headers.
 3. Keep the log file for future retrieval.
+4. The report script automatically updates the skill index.
+
+## Skill Index
+
+A skill index (`references/HERMES_SKILL_INDEX.md`) is auto-generated and updated on each report. Use this index for quick retrieval of skill content:
+
+```bash
+# View the index
+cat references/HERMES_SKILL_INDEX.md
+
+# Regenerate index manually
+python scripts/install_index.py --force
+```
+
+The index provides:
+- File listings with descriptions and tags
+- Last update timestamps
+- Tag-based categorization
 
 ## Files
 
 - `references/hermes_report_template.md`: Fixed report template sent to Hermes.
 - `references/hermes_reference_template.md`: Fixed pre-think reference template for OpenClaw.
-- `scripts/hermes_report.py`: Builds report payload and writes JSONL log.
+- `references/HERMES_SKILL_INDEX.md`: Auto-generated skill index for content retrieval.
+- `scripts/hermes_report.py`: Builds report payload, writes JSONL log, updates index.
 - `scripts/hermes_reference.py`: Reads latest insights and renders pre-think template.
+- `scripts/update_index.py`: Core index generation logic.
+- `scripts/install_index.py`: Initialize or regenerate the skill index.
 - Runtime log `references/hermes_memory.jsonl` is auto-created at first run and is not required for packaging.
 
 ## Rules
