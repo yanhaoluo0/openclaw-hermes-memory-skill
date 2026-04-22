@@ -19,9 +19,36 @@ PM 分发测试工单
 执行验证脚本
     ↓
 通过?
-    ├─ Yes → 归档 artifact, 通知 PM (status: done)
-    └─ No → 创建 Child Issue, 通知 PM (status: failed)
+    ├─ Yes → Git 提交代码 → 归档 artifact → 通知 PM (status: done)
+    └─ No → 创建 Child Issue → 通知 PM (status: failed)
 ```
+
+## 测试通过后的 Git 提交
+
+测试全部通过后，Agent 必须提交代码：
+
+```bash
+# 1. 创建分支
+git checkout -b work-order/{work_order_id}
+
+# 2. 添加产物文件
+git add {artifact_path}
+
+# 3. 提交 (包含测试结果)
+git commit -m "$(cat <<'EOF'
+[{工单ID}] {标题}
+
+- 测试通过: {验证方式} ({通过数}/{总数})
+- 产物: {artifact_path}
+- 耗时: {actual_minutes}min
+EOF
+)"
+```
+
+**Commit Message 规范**:
+- 首行: `[{工单ID}] {工单标题}` - 便于追踪
+- 第二行起: 说明测试结果、产物路径、耗时
+- 同一工单多次重试: `git commit --amend` 追加新测试结果
 
 ## 验证脚本类型
 

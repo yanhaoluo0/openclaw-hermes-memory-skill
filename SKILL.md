@@ -138,8 +138,19 @@ Agent 执行
 
 Test Agent 验证
     │
-    ├── 通过 → 归档 artifact → 状态 → done
+    ├── 通过 → Git 提交代码 → 归档 artifact → 状态 → done
     └── 不通过 → 创建 Child Issue (最多 3 层继承)
+
+Git 提交规则:
+- 分支名: `work-order/{work_order_id}`
+- Commit Message 格式:
+  ```
+  [{工单ID}] {标题}
+
+  - 测试通过: {验证方式} ({通过数}/{总数})
+  - 产物: {artifact_path}
+  - 耗时: {actual_minutes}min
+  ```
 
 超时监控 (独立 cron)
     │
