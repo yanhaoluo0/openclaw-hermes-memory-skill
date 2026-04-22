@@ -1,0 +1,8 @@
+{
+  "id": "hermes-memory-loop-hook",
+  "configSchema": {},
+  "name": "Hermes Memory Loop Hook",
+  "description": "OpenClaw-Hermes memory loop via message_sent and before_prompt_build hooks",
+  "version": "1.0.0",
+  "kind": "hook"
+}

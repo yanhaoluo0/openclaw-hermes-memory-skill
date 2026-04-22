@@ -1,79 +1,170 @@
 ---
 name: openclaw-hermes-memory-loop
-description: Enforce a structured learning loop between OpenClaw and Hermes with Python scripts and fixed templates. Use when the user wants OpenClaw to (1) report each user request + model answer to Hermes in a strict format for continuous summarization, and (2) load Hermes insights before thinking/answering by using a deterministic reference template.
+description: Enforce a structured learning loop between OpenClaw and Hermes. Before answering, load Hermes insights and inject into context. After answering, report the exchange to Hermes for continuous summarization.
 ---
 
 # OpenClaw Hermes Memory Loop
 
-Use this skill to enforce a deterministic two-stage workflow:
+Enforces a deterministic two-stage workflow that creates a continuous feedback loop between OpenClaw and Hermes:
 
-1. Before answering, load Hermes insights and build a reference prompt.
-2. After answering, report the turn (user input + model output) to Hermes with a fixed template.
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     OpenClaw Agent                          │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+        ┌──────────────────┴──────────────────┐
+        │                                         │
+        ▼                                         ▼
+┌───────────────────┐                 ┌─────────────────────┐
+│   before_prompt_  │                 │   message_sent      │
+│   build hook:     │                 │   hook:             │
+│   hermes_inspect  │                 │   hermes_report     │
+│   → prependContext│                 │   → 记录到 JSONL    │
+└───────────────────┘                 └─────────────────────┘
+        ▲                                         │
+        │                                         ▼
+        │                          ┌─────────────────────────┐
+        │                          │   Hermes 分析提取经验   │
+        │                          │   形成可复用规则        │
+        └──────────────────────────┴─────────────────────────┘
+```
 
-## Quick Start
+## Architecture
 
-Run from this skill directory:
+This skill consists of two components:
+
+1. **Python Scripts** (`scripts/`) - Core logic for Hermes interaction
+2. **Plugin Hook** (`hook/`) - OpenClaw plugin for automatic hook integration
+
+## Installation
+
+### Option 1: Automated Hook Installation (Recommended)
+
+After cloning the skill, install the hook plugin:
 
 ```bash
+cd ~/.openclaw/workspace/skills/openclaw-hermes-memory-skill/openclaw-hermes-memory-skill/hook
+openclaw plugins install --link .
+```
+
+This links the hook plugin so OpenClaw can discover it.
+
+### Option 2: Manual Usage (No Hook)
+
+If you don't install the plugin, you can still use the scripts manually:
+
+```bash
+# Step 1: Before answering - load Hermes insights
 python scripts/hermes_reference.py --user-input "用户当前问题"
+
+# Step 2: After answering - report the exchange
+python scripts/hermes_report.py \
+  --user-input "用户原话" \
+  --model-output "OpenClaw回复"
 ```
 
-Use the generated output as OpenClaw's "thinking preface".
+## Hook Details
 
-After OpenClaw finishes response:
+### before_prompt_build
 
-```bash
-python scripts/hermes_report.py --user-input "用户原话" --model-output "OpenClaw回复"
-```
+- **Trigger**: Before OpenClaw builds the prompt for the model
+- **Action**: Calls `hermes_inspect.py` to find relevant Hermes insights
+- **Result**: Injects `prependContext` with Hermes experience into the prompt
+- **Relevance**: Uses keyword matching to find most relevant historical insights
 
-This command prints a fixed Hermes report prompt and appends a JSONL record into the memory log.
+### message_sent
 
-## Workflow
-
-### Step 1: Pre-think reference (mandatory)
-
-1. Run `scripts/hermes_reference.py`.
-2. Copy output to OpenClaw as system or developer-level context before generation.
-3. Ensure the section `## [HERMES_INSIGHTS]` is present; if no memory exists, script returns default fallback instructions.
-
-### Step 2: Post-answer report (mandatory)
-
-1. Run `scripts/hermes_report.py` with exact user input and model output.
-2. Send printed template text to Hermes without altering section headers.
-3. Keep the log file for future retrieval.
-4. The report script automatically updates the skill index.
-
-## Skill Index
-
-A skill index (`references/HERMES_SKILL_INDEX.md`) is auto-generated and updated on each report. Use this index for quick retrieval of skill content:
-
-```bash
-# View the index
-cat references/HERMES_SKILL_INDEX.md
-
-# Regenerate index manually
-python scripts/install_index.py --force
-```
-
-The index provides:
-- File listings with descriptions and tags
-- Last update timestamps
-- Tag-based categorization
+- **Trigger**: After OpenClaw sends a response to the user
+- **Action**: Calls `hermes_report.py` to log the exchange
+- **Result**: Writes a JSONL record to `references/hermes_memory.jsonl`
+- **Hermes Analysis**: The JSONL is later analyzed by Hermes to extract lessons and rules
 
 ## Files
 
-- `references/hermes_report_template.md`: Fixed report template sent to Hermes.
-- `references/hermes_reference_template.md`: Fixed pre-think reference template for OpenClaw.
-- `references/HERMES_SKILL_INDEX.md`: Auto-generated skill index for content retrieval.
-- `scripts/hermes_report.py`: Builds report payload, writes JSONL log, updates index.
-- `scripts/hermes_reference.py`: Reads latest insights and renders pre-think template.
-- `scripts/update_index.py`: Core index generation logic.
-- `scripts/install_index.py`: Initialize or regenerate the skill index.
-- Runtime log `references/hermes_memory.jsonl` is auto-created at first run and is not required for packaging.
+### Scripts (`scripts/`)
+
+| File | Description |
+|------|-------------|
+| `hermes_reference.py` | Generate pre-think reference (manual workflow) |
+| `hermes_inspect.py` | Find relevant insights for hook integration |
+| `hermes_report.py` | Build report payload, write JSONL, update index |
+| `update_index.py` | Core index generation logic |
+| `install_index.py` | Initialize skill index |
+
+### Hook Plugin (`hook/`)
+
+| File | Description |
+|------|-------------|
+| `openclaw.plugin.json` | Plugin manifest |
+| `index.js` | Plugin entry point |
+| `handler.js` | Hook implementations (before_prompt_build, message_sent) |
+
+### References (`references/`)
+
+| File | Description |
+|------|-------------|
+| `hermes_reference_template.md` | Template for pre-think context |
+| `hermes_report_template.md` | Template for Hermes report |
+| `hermes_memory.jsonl` | Auto-created JSONL log of all exchanges |
+| `HERMES_SKILL_INDEX.md` | Auto-generated skill index |
+
+## Memory Log Format
+
+Each exchange is logged as a JSON line:
+
+```json
+{
+  "timestamp": "2026-04-22T02:05:18.526159+00:00",
+  "conversation_id": "952b3201-33de-4473-ba3f-a61e7e0b3021",
+  "project": "deep-learning",
+  "user_input": "用户问题",
+  "model_output": "模型回答"
+}
+```
+
+## Hermes Insights Format
+
+Insights are injected as `prependContext` with this structure:
+
+```
+【Hermes 相关经验参考】
+
+[1] 用户问题摘要
+   → 模型回答摘要（truncated to 300 chars）
+
+【执行策略】
+1. 先从上述 Hermes 经验中提取可应用规则
+2. 如存在冲突，优先采用更具体、更新、更可执行的规则
+3. 若无相关经验，使用默认策略：澄清目标、分步执行、验证结果
+4. 回复需体现至少一条已应用经验
+```
+
+## Configuration
+
+The hook uses these environment-aware paths:
+- `HERMES_MEMORY_LOG`: Override path to `hermes_memory.jsonl`
+- `SKILL_ROOT`: Auto-detected from script location
+
+## Troubleshooting
+
+### Hook not firing
+
+1. Check if plugin is installed: `openclaw plugins list`
+2. Enable debug: Look for `[hermes-memory-loop]` in OpenClaw logs
+3. Verify Python3 is available: `python3 --version`
+
+### Hermes insights not relevant
+
+The `hermes_inspect.py` uses simple keyword matching. For better results:
+- Keep `user_input` in hermes_memory.jsonl concise
+- Hermes reports should highlight key terms
+
+### Duplicate entries in JSONL
+
+The hook calls `hermes_report.py` on every `message_sent`. If Hermes is also reporting, you may get duplicates. Consider disabling one of the reporting paths.
 
 ## Rules
 
-- Keep template headers unchanged to preserve parser compatibility.
-- Never skip pre-think reference stage.
-- Never skip post-answer report stage.
-- If user/model text contains newlines, keep content as-is; scripts safely encode JSON logs.
+- Keep template headers unchanged to preserve parser compatibility
+- Hook errors are silent/non-blocking (logged to console for debugging)
+- If user/model text contains newlines, scripts safely encode JSON logs
