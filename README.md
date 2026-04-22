@@ -16,6 +16,7 @@
 ├── scripts/                   # Shell 脚本
 │   ├── init-db.sh            # SQLite 初始化
 │   ├── create-work-order.sh  # 创建工单
+│   ├── block-until-confirm.sh # Human 确认拦截
 │   ├── command-whitelist.sh  # 命令白名单校验
 │   ├── check-artifact.sh     # 产物校验
 │   ├── loop-detector.sh      # 死循环检测
@@ -77,7 +78,7 @@ bash scripts/check-artifact.sh "SKILL.md"
 
 | Hook | 层级 | 作用 | 实现 |
 |------|------|------|------|
-| pre_task_dispatch | PM | 人类确认后才行 | 脚本检查 |
+| pre_task_dispatch | PM | 人类确认后才行 | block-until-confirm.sh |
 | context_assemble | PM | 精准裁剪上下文 | Hermes 查询 |
 | pre_command_execution | 执行 | 白名单校验 | 正则匹配 |
 | dry_run_validation | 执行 | AST 语法检查 | Python AST |
