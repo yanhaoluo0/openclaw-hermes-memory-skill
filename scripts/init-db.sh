@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS work_orders (
   estimated_minutes INTEGER DEFAULT 30,
   actual_minutes INTEGER,
   retry_count INTEGER DEFAULT 0,
+  human_confirmed INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now')),
   completed_at TEXT,

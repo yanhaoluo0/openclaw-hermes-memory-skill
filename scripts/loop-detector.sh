@@ -25,10 +25,12 @@ if [ -z "$RECENT_ERRORS" ]; then
 fi
 
 # 计算相似度（简单的词频重叠）
-ERROR_HASH=$(echo "$RECENT_ERRORS" | sort | uniq -c | sort -rn | head -3 | md5sum | cut -d' ' -f1)
+# md5sum 在 Linux/Git Bash 可用，md5 在 macOS 可用
+ERROR_HASH=$(echo "$RECENT_ERRORS" | sort | uniq -c | sort -rn | head -3 | md5sum 2>/dev/null | cut -d' ' -f1 || echo "$RECENT_ERRORS" | sort | uniq -c | sort -rn | head -3 | md5 | cut -d' ' -f1)
 
 # 与上一次保存的哈希比较
-HASH_FILE="/tmp/loop_detector_hash.txt"
+# 使用 TEMP 环境变量，兼容 Windows
+HASH_FILE="${TEMP:-/tmp}/loop_detector_hash.txt"
 PREV_HASH=""
 
 if [ -f "$HASH_FILE" ]; then

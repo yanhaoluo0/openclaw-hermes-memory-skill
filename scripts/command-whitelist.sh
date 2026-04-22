@@ -25,8 +25,18 @@ ALLOWED_COMMANDS_test="npm|npx|yarn|pnpm|git|node|python3|node_modules/.bin|pyte
 
 ALLOWED_COMMANDS_devops="npm|npx|yarn|pnpm|git|node|python3|docker|docker-compose|kubectl|ssh|systemctl|ps|grep|find|chmod|chown|mkdir|rm|cat|echo|tee|journalctl|service|htop|top|df|du"
 
-# 危险命令黑名单
-DANGEROUS_PATTERNS="rm\s+-rf\s+/|mkfs|fdisk dd if=|:(){ :|:& };:"
+# 角色特有的禁止子命令 (格式: "角色:命令子串")
+FORBIDDEN_SUBCOMMANDS="
+frontend:git push
+frontend:git push origin
+frontend:docker run
+frontend:docker exec
+backend:rm -rf /
+backend:mkfs
+backend:fdisk"
+
+# 危险命令黑名单 (正则)
+DANGEROUS_PATTERNS="rm\s+-rf\s+/|mkfs|fdisk|dd\s+if=|:{.*:.*&.*};:"
 
 # 检查危险模式
 if echo "$COMMAND" | grep -E "$DANGEROUS_PATTERNS" > /dev/null 2>&1; then
@@ -61,6 +71,20 @@ esac
 
 # 执行白名单检查
 if echo "$CMD_BASE" | grep -E "^($ALLOWED)$" > /dev/null 2>&1; then
+  # 检查角色特有的禁止子命令
+  while IFS=: read -r forbid_role forbid_pattern; do
+    # 跳过空行和注释
+    if [ -z "$forbid_role" ] || [[ "$forbid_role" =~ ^# ]]; then
+      continue
+    fi
+    if [ "$forbid_role" = "$ROLE" ]; then
+      if echo "$COMMAND" | grep -E "$forbid_pattern" > /dev/null 2>&1; then
+        echo "REJECTED: $COMMAND 包含禁止的子命令 ($forbid_pattern)"
+        exit 1
+      fi
+    fi
+  done <<< "$FORBIDDEN_SUBCOMMANDS"
+
   echo "APPROVED: $CMD_BASE (角色: $ROLE)"
   exit 0
 else

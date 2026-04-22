@@ -47,6 +47,7 @@ CREATE TABLE work_orders (
   estimated_minutes INTEGER DEFAULT 30,
   actual_minutes INTEGER,
   retry_count INTEGER DEFAULT 0,
+  human_confirmed INTEGER DEFAULT 0,
   created_at TEXT,
   updated_at TEXT,
   completed_at TEXT
