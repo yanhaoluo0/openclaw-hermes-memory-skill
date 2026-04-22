@@ -117,6 +117,13 @@ pending → in_progress → review → testing → done
 3. context_package 大小不超过 30KB
 4. Agent 输出必须结构化（填空模板）
 
+## 测试示例
+
+| 文件 | 说明 |
+|------|------|
+| `examples/frontend-e2e-example.md` | 前端 Playwright E2E 测试伪代码示例，覆盖登录、用户管理、商品、订单等模块 |
+| `examples/backend-api-example.md` | 后端 pytest 接口测试伪代码示例，覆盖认证、用户、商品、订单等模块 |
+
 ## 相关文档
 
 - [SKILL.md](SKILL.md) - 完整技能定义
